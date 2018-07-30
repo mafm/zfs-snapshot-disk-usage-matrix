@@ -72,9 +72,9 @@ def snapshots_in_creation_order(filesystem, host='localhost', strip_filesystem=F
 
 def space_between_snapshots(filesystem, first_snap, last_snap, host='localhost'):
     "Space used by a sequence of snapshots."
-    cmd = "{} sudo  zfs destroy -nv {}@{}%{} | grep \"would reclaim\"".format(maybe_ssh(host), filesystem, first_snap, last_snap)
+    cmd = "{} sudo zfs destroy -nvp {}@{}%{} | grep '^reclaim\t'".format(maybe_ssh(host), filesystem, first_snap, last_snap)
     lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).split('\n')
-    return lines[0].split()[-1]
+    return lines[0].split('\t')[-1]
 
 def print_csv(lines):
     """Write out a list of lists as CSV.
@@ -87,18 +87,6 @@ def print_csv(lines):
             print ",",
         print
 
-def size_in_bytes(size):
-    "Convert a ZFS size string into bytes"
-    if size.endswith("K"):
-        return float(size[:-1])*1024.0
-    if size.endswith("M"):
-        return float(size[:-1])*pow(1024.0,2)
-    if size.endswith("G"):
-        return float(size[:-1])*pow(1024.0,3)
-    if size.endswith("T"):
-        return float(size[:-1])*pow(1024.0,4)
-    return int(size)
-    
 def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
     snapshot_names = snapshots_in_creation_order(filesystem, strip_filesystem=True)
     if suppress_common_prefix:
@@ -115,7 +103,7 @@ def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
                 space_used = space_between_snapshots(filesystem,
                                                      start_snap,
                                                      end_snap)
-                this_line.append(size_in_bytes(space_used))
+                this_line.append(space_used)
             else:
                 this_line.append(None)
         ## Show line we've just done
