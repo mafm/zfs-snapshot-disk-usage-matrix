@@ -97,6 +97,8 @@ def size_in_bytes(size):
         return float(size[:-1])*pow(1024.0,3)
     if size.endswith("T"):
         return float(size[:-1])*pow(1024.0,4)
+    if size.endswith("B"):
+        return int(size[:-1])
     return int(size)
     
 def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
