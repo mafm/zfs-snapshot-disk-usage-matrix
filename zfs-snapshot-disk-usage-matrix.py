@@ -60,7 +60,7 @@ def maybe_ssh(host):
 def snapshots_in_creation_order(filesystem, host='localhost', strip_filesystem=False):
     "Return list of snapshots on FILESYSTEM in order of creation."
     result = []
-    cmd = "{} zfs list -r -t snapshot -s creation '{}' -o name".format(maybe_ssh(host), filesystem)
+    cmd = "{} zfs list -r -t snapshot -s creation -o name '{}'".format(maybe_ssh(host), filesystem)
     lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).split('\n')
     snapshot_prefix = filesystem + "@"
     for line in lines:
