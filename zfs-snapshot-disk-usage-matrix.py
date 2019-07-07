@@ -35,8 +35,6 @@ Example:
 
 """
 
-from docopt import docopt
-
 import subprocess, sys, fcntl
 from os.path import commonprefix
 
@@ -110,8 +108,7 @@ def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
         print_csv([this_line])
 
 if __name__ == '__main__':
-    arguments=docopt(__doc__)
-    write_snapshot_disk_usage_matrix(arguments['<filesystem>'])
+    write_snapshot_disk_usage_matrix(sys.argv[1])
 
 # Useful for
 # snapshots_in_creation_order('local-fast-tank-machine0/Virtual-Machines/VirtualBox/vpn-linux-u14')
