@@ -113,7 +113,7 @@ if __name__ == '__main__':
     arguments=docopt(__doc__)
     write_snapshot_disk_usage_matrix(arguments['<filesystem>'])
 
-# Useful for     
+# Useful for
 # snapshots_in_creation_order('local-fast-tank-machine0/Virtual-Machines/VirtualBox/vpn-linux-u14')
 # space_between_snapshots('local-fast-tank-machine0/Virtual-Machines/VirtualBox/vpn-linux-u14',
 #                         'zfs-auto-snap_monthly-2015-03-18-2345',
