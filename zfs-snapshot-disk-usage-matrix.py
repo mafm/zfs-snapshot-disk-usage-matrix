@@ -38,6 +38,18 @@ Example:
 import subprocess, sys, fcntl
 from os.path import commonprefix
 
+import math
+
+def convert_size(size_bytes):
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s%s" % (s, size_name[i])
+
+
 def strip_filesystem_name(snapshot_name):
     """Given the name of a snapshot, strip the filesystem part.
 
@@ -98,9 +110,9 @@ def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
             if start <= end:
                 start_snap = snapshot_names[start]
                 end_snap = snapshot_names[end]
-                space_used = space_between_snapshots(filesystem,
+                space_used = convert_size(float(space_between_snapshots(filesystem,
                                                      start_snap,
-                                                     end_snap)
+                                                     end_snap)))
                 this_line.append(space_used)
             else:
                 this_line.append(None)
