@@ -53,11 +53,3 @@ Example:
 
 > `zfs-snapshot-disk-usage-matrix.py local-fast-tank-machine0/Virtual-Machines/VirtualBox/vpn-linux-u14 | tee vpn-snapshot-usage.csv`
 
-## A note about sudo
-
-This script uses sudo to call zfs commands. That's not ideal, but unless the linux zfs packages have changed recently you need root to run *any* zfs command on linux. On solaris, and (iirc) bsd you don't need root for non-modifying zfs commands.
-
-What people do in practice on linux is put the non-modifying zfs commands in the sudoers file for passwordless sudo, so they're available to everyone. If I was putting more effort into this note, I'd copy in an example of what's needed in the sudoers syntax.
-
-If you have a suggestion relating to this, please add a comment on the issue on this.
-
