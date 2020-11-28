@@ -35,10 +35,11 @@ Example:
 
 """
 
-import subprocess, sys, fcntl
+import math
+import subprocess
+import sys
 from os.path import commonprefix
 
-import math
 
 def convert_size(size_bytes):
     if size_bytes == 0:
@@ -56,8 +57,9 @@ def strip_filesystem_name(snapshot_name):
     We require (and check) that the snapshot name contains a single
     '@' separating filesystem name from the 'snapshot' part of the name.
     """
-    assert snapshot_name.count("@")==1
+    assert snapshot_name.count("@") == 1
     return snapshot_name.split("@")[1]
+
 
 def maybe_ssh(host):
     if (host == 'localhost'):
@@ -67,13 +69,14 @@ def maybe_ssh(host):
     ## will need the ssh in there
     return ['ssh', '-C', host]
 
+
 def snapshots_in_creation_order(filesystem, host='localhost', strip_filesystem=False):
     "Return list of snapshots on FILESYSTEM in order of creation."
     result = []
     cmd = maybe_ssh(host) + ['zfs', 'list', '-r', '-t', 'snapshot',
-            '-s', 'creation', '-o', 'name', filesystem]
+                             '-s', 'creation', '-o', 'name', filesystem]
     lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
-            encoding='utf8').split('\n')
+                                    encoding='utf8').split('\n')
     snapshot_prefix = filesystem + "@"
     for line in lines:
         if line.startswith(snapshot_prefix):
@@ -82,12 +85,14 @@ def snapshots_in_creation_order(filesystem, host='localhost', strip_filesystem=F
         return list(map(strip_filesystem_name, result))
     return result
 
+
 def space_between_snapshots(filesystem, first_snap, last_snap, host='localhost'):
     "Space used by a sequence of snapshots."
     cmd = maybe_ssh(host) + ['zfs', 'destroy', '-nvp',
-            '{}@{}%{}'.format(filesystem, first_snap, last_snap)]
+                             '{}@{}%{}'.format(filesystem, first_snap, last_snap)]
     lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, encoding='utf8').split('\n')
     return lines[-2].split('\t')[-1]
+
 
 def print_csv(lines):
     """Write out a list of lists as CSV.
@@ -100,13 +105,14 @@ def print_csv(lines):
             print(",", end='')
         print()
 
+
 def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
     snapshot_names = snapshots_in_creation_order(filesystem, strip_filesystem=True)
     if suppress_common_prefix:
         suppressed_prefix_len = len(commonprefix(snapshot_names))
     else:
         suppressed_prefix_len = 0
-    print_csv([[None]+[name[suppressed_prefix_len:] for name in snapshot_names]]) # Start with Column headers
+    print_csv([[None] + [name[suppressed_prefix_len:] for name in snapshot_names]])  # Start with Column headers
     for end in range(len(snapshot_names)):
         this_line = [snapshot_names[end][suppressed_prefix_len:]]
         for start in range(len(snapshot_names)):
@@ -114,13 +120,14 @@ def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
                 start_snap = snapshot_names[start]
                 end_snap = snapshot_names[end]
                 space_used = convert_size(float(space_between_snapshots(filesystem,
-                                                     start_snap,
-                                                     end_snap)))
+                                                                        start_snap,
+                                                                        end_snap)))
                 this_line.append(space_used)
             else:
                 this_line.append(None)
         ## Show line we've just done
         print_csv([this_line])
+
 
 if __name__ == '__main__':
     write_snapshot_disk_usage_matrix(sys.argv[1])
