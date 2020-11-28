@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Usage: zfs-snapshot-disk-usage-matrix.py <filesystem>
+"""Usage: zfs-snapshot-disk-usage-matrix.py [--human-readable|-h] <filesystem>
 
 This script produces csv output giving useful details of the usage of
 ZFS snapshots.
@@ -25,7 +25,7 @@ filesystem, and shows how much space you can free up by deleting the
 corresponding sequence of snapshots.
 
 Output from this script:
-(a) converts sizes shown into bytes
+(a) converts sizes shown into bytes, or, alternatively, human-readable sizes
 (b) strips any common prefix from snapshot names (e.g. "zfs-auto-snap")
 
 Options could be added to enable/disable this, but I can't be bothered.
@@ -106,7 +106,8 @@ def print_csv(lines):
         print()
 
 
-def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
+def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True,
+                                     human_readable=False):
     snapshot_names = snapshots_in_creation_order(filesystem, strip_filesystem=True)
     if suppress_common_prefix:
         suppressed_prefix_len = len(commonprefix(snapshot_names))
@@ -119,9 +120,9 @@ def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
             if start <= end:
                 start_snap = snapshot_names[start]
                 end_snap = snapshot_names[end]
-                space_used = convert_size(float(space_between_snapshots(filesystem,
-                                                                        start_snap,
-                                                                        end_snap)))
+                space_used = space_between_snapshots(filesystem, start_snap, end_snap)
+                if human_readable:
+                    space_used = convert_size(float(space_used))
                 this_line.append(space_used)
             else:
                 this_line.append(None)
@@ -130,7 +131,12 @@ def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
 
 
 if __name__ == '__main__':
-    write_snapshot_disk_usage_matrix(sys.argv[1])
+    if len(sys.argv) == 3 and (sys.argv[1] == '-h' or sys.argv[1].startswith('--human')):
+        write_snapshot_disk_usage_matrix(sys.argv[2], human_readable=True)
+    elif len(sys.argv) == 2:
+        write_snapshot_disk_usage_matrix(sys.argv[1])
+    else:
+        sys.exit("Usage: {} [--human-readable|-h] <filesystem>".format(sys.argv[0]))
 
 # Useful for
 # snapshots_in_creation_order('local-fast-tank-machine0/Virtual-Machines/VirtualBox/vpn-linux-u14')
