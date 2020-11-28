@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """Usage: zfs-snapshot-disk-usage-matrix.py <filesystem>
 
 This script produces csv output giving useful details of the usage of
@@ -59,19 +59,19 @@ def snapshots_in_creation_order(filesystem, host='localhost', strip_filesystem=F
     "Return list of snapshots on FILESYSTEM in order of creation."
     result = []
     cmd = "{} zfs list -r -t snapshot -s creation -o name '{}'".format(maybe_ssh(host), filesystem)
-    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).split('\n')
+    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, encoding='utf8').split('\n')
     snapshot_prefix = filesystem + "@"
     for line in lines:
         if line.startswith(snapshot_prefix):
             result.append(line)
     if strip_filesystem:
-        return map(strip_filesystem_name, result)
+        return list(map(strip_filesystem_name, result))
     return result
 
 def space_between_snapshots(filesystem, first_snap, last_snap, host='localhost'):
     "Space used by a sequence of snapshots."
     cmd = "{} zfs destroy -nvp '{}@{}'%'{}' | grep '^reclaim\t'".format(maybe_ssh(host), filesystem, first_snap, last_snap)
-    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).split('\n')
+    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, encoding='utf8').split('\n')
     return lines[0].split('\t')[-1]
 
 def print_csv(lines):
@@ -80,10 +80,10 @@ def print_csv(lines):
     Not robust against odd input."""
     for line in lines:
         for item in line:
-            if item <> None:
-                print item,
-            print ",",
-        print
+            if item != None:
+                print(item, end='')
+            print(",", end='')
+        print()
 
 def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
     snapshot_names = snapshots_in_creation_order(filesystem, strip_filesystem=True)
