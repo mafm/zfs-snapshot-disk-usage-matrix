@@ -1,5 +1,5 @@
-#!/usr/bin/env python2
-"""Usage: zfs-snapshot-disk-usage-matrix.py <filesystem>
+#!/usr/bin/env python3
+"""Usage: zfs-snapshot-disk-usage-matrix.py [--human-readable|-h] <filesystem>
 
 This script produces csv output giving useful details of the usage of
 ZFS snapshots.
@@ -25,7 +25,7 @@ filesystem, and shows how much space you can free up by deleting the
 corresponding sequence of snapshots.
 
 Output from this script:
-(a) converts sizes shown into bytes
+(a) converts sizes shown into bytes, or, alternatively, human-readable sizes
 (b) strips any common prefix from snapshot names (e.g. "zfs-auto-snap")
 
 Options could be added to enable/disable this, but I can't be bothered.
@@ -35,8 +35,21 @@ Example:
 
 """
 
-import subprocess, sys, fcntl
+import math
+import subprocess
+import sys
 from os.path import commonprefix
+
+
+def convert_size(size_bytes):
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "kiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s%s" % (s, size_name[i])
+
 
 def strip_filesystem_name(snapshot_name):
     """Given the name of a snapshot, strip the filesystem part.
@@ -44,35 +57,42 @@ def strip_filesystem_name(snapshot_name):
     We require (and check) that the snapshot name contains a single
     '@' separating filesystem name from the 'snapshot' part of the name.
     """
-    assert snapshot_name.count("@")==1
+    assert snapshot_name.count("@") == 1
     return snapshot_name.split("@")[1]
+
 
 def maybe_ssh(host):
     if (host == 'localhost'):
         ## no need to ssh host @ start of command - empty string
-        return ""
+        return []
     ##else
     ## will need the ssh in there
-    return "ssh -C {}".format(host)
+    return ['ssh', '-C', host]
+
 
 def snapshots_in_creation_order(filesystem, host='localhost', strip_filesystem=False):
     "Return list of snapshots on FILESYSTEM in order of creation."
     result = []
-    cmd = "{} zfs list -r -t snapshot -s creation -o name '{}'".format(maybe_ssh(host), filesystem)
-    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).split('\n')
+    cmd = maybe_ssh(host) + ['zfs', 'list', '-r', '-t', 'snapshot',
+                             '-s', 'creation', '-o', 'name', filesystem]
+    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
+                                    encoding='utf8').split('\n')
     snapshot_prefix = filesystem + "@"
     for line in lines:
         if line.startswith(snapshot_prefix):
             result.append(line)
     if strip_filesystem:
-        return map(strip_filesystem_name, result)
+        return list(map(strip_filesystem_name, result))
     return result
+
 
 def space_between_snapshots(filesystem, first_snap, last_snap, host='localhost'):
     "Space used by a sequence of snapshots."
-    cmd = "{} zfs destroy -nvp '{}@{}'%'{}' | grep '^reclaim\t'".format(maybe_ssh(host), filesystem, first_snap, last_snap)
-    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True).split('\n')
-    return lines[0].split('\t')[-1]
+    cmd = maybe_ssh(host) + ['zfs', 'destroy', '-nvp',
+                             '{}@{}%{}'.format(filesystem, first_snap, last_snap)]
+    lines = subprocess.check_output(cmd, stderr=subprocess.STDOUT, encoding='utf8').split('\n')
+    return lines[-2].split('\t')[-1]
+
 
 def print_csv(lines):
     """Write out a list of lists as CSV.
@@ -80,35 +100,43 @@ def print_csv(lines):
     Not robust against odd input."""
     for line in lines:
         for item in line:
-            if item <> None:
-                print item,
-            print ",",
-        print
+            if item != None:
+                print(item, end='')
+            print(",", end='')
+        print()
 
-def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True):
+
+def write_snapshot_disk_usage_matrix(filesystem, suppress_common_prefix=True,
+                                     human_readable=False):
     snapshot_names = snapshots_in_creation_order(filesystem, strip_filesystem=True)
     if suppress_common_prefix:
         suppressed_prefix_len = len(commonprefix(snapshot_names))
     else:
         suppressed_prefix_len = 0
-    print_csv([[None]+[name[suppressed_prefix_len:] for name in snapshot_names]]) # Start with Column headers
+    print_csv([[None] + [name[suppressed_prefix_len:] for name in snapshot_names]])  # Start with Column headers
     for end in range(len(snapshot_names)):
         this_line = [snapshot_names[end][suppressed_prefix_len:]]
         for start in range(len(snapshot_names)):
             if start <= end:
                 start_snap = snapshot_names[start]
                 end_snap = snapshot_names[end]
-                space_used = space_between_snapshots(filesystem,
-                                                     start_snap,
-                                                     end_snap)
+                space_used = space_between_snapshots(filesystem, start_snap, end_snap)
+                if human_readable:
+                    space_used = convert_size(float(space_used))
                 this_line.append(space_used)
             else:
                 this_line.append(None)
         ## Show line we've just done
         print_csv([this_line])
 
+
 if __name__ == '__main__':
-    write_snapshot_disk_usage_matrix(sys.argv[1])
+    if len(sys.argv) == 3 and (sys.argv[1] == '-h' or sys.argv[1].startswith('--human')):
+        write_snapshot_disk_usage_matrix(sys.argv[2], human_readable=True)
+    elif len(sys.argv) == 2:
+        write_snapshot_disk_usage_matrix(sys.argv[1])
+    else:
+        sys.exit("Usage: {} [--human-readable|-h] <filesystem>".format(sys.argv[0]))
 
 # Useful for
 # snapshots_in_creation_order('local-fast-tank-machine0/Virtual-Machines/VirtualBox/vpn-linux-u14')
